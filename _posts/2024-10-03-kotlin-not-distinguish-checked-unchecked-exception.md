@@ -199,7 +199,7 @@ fun nonRuntimeExceptionRollbackTest() {
 
 Dmitry Jemerov, Svetlana Isakova, ⌜Kotlin In Action⌟, 오현석 옮김, 에이콘출판사, 2017, p.97-98
 
-Kotlin Programming Language, “Exceptions” https://kotlinlang.org/docs/exceptions.html, (참고 날짜 2024.10.01)
+Kotlin Programming Language, “Exceptions” [https://kotlinlang.org/docs/exceptions.html](https://kotlinlang.org/docs/exceptions.html), (참고 날짜 2024.10.01)
 
 velog, “Java의 Checked Exception은 실수다?”, [https://velog.io/@eastperson/Java의-Checked-Exception은-실수다-83omm70j](https://velog.io/@eastperson/Java%EC%9D%98-Checked-Exception%EC%9D%80-%EC%8B%A4%EC%88%98%EB%8B%A4-83omm70j), (참고 날짜 2024.10.01)
 
