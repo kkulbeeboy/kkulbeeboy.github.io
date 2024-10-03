@@ -1,7 +1,7 @@
 ---
 title: "코틀린 시퀀스(Sequence)를 이용한 지연 연산에 대해 알아보자"
 date: 2024-08-21 00:00:00 +0900
-categories: [language]
+categories: [language, kotlin]
 tags: [kotlin, sequence]
 ---
 

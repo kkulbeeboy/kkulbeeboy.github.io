@@ -1,7 +1,7 @@
 ---
 title: "코틀린 객체 생성 시, 속성값을 검증하고 싶다면?"
 date: 2024-09-16 00:00:00 +0900
-categories: [language]
+categories: [language, kotlin]
 tags: [kotlin]
 ---
 
