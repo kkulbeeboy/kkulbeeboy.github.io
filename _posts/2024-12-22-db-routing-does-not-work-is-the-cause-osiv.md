@@ -241,10 +241,8 @@ spring:
 
 김영한, ⌜자바 ORM 표준 JPA 프로그래밍⌟, 에이콘출판사, 2022, p.593-607
 
-hudi.blog, “대체 왜 DataSource 라우팅이 안되는거야!? (feat. OSIV)”, https://hudi.blog/multi-datasource-issue-with-osiv/, (참고 날짜 2024.12.22)
+hudi.blog, “대체 왜 DataSource 라우팅이 안되는거야!? (feat. OSIV)”, [https://hudi.blog/multi-datasource-issue-with-osiv/](https://hudi.blog/multi-datasource-issue-with-osiv/), (참고 날짜 2024.12.22)
 
-haon.blog, “DB 레플리케이션 환경에서 DataSource 라우팅이 안되는 이슈 해결기 😤 (feat. JPA OSIV)”, 
+haon.blog, “DB 레플리케이션 환경에서 DataSource 라우팅이 안되는 이슈 해결기 😤 (feat. JPA OSIV)”, [https://haon.blog/database/replication-osiv-issue/](https://haon.blog/database/replication-osiv-issue/), (참고 날짜 2024.12.22)
 
-https://haon.blog/database/replication-osiv-issue/, (참고 날짜 2024.12.22)
-
-티스토리, “DataSource 라우팅이 안되는 이유. OSIV”, [https://eastc.tistory.com/entry/DataSource-라우팅이-안되는-이유-OSIV](https://eastc.tistory.com/entry/DataSource-%EB%9D%BC%EC%9A%B0%ED%8C%85%EC%9D%B4-%EC%95%88%EB%90%98%EB%8A%94-%EC%9D%B4%EC%9C%A0-OSIV), (참고 날짜 2024.12.22
+티스토리, “DataSource 라우팅이 안되는 이유. OSIV”, [https://eastc.tistory.com/entry/DataSource-라우팅이-안되는-이유-OSIV](https://eastc.tistory.com/entry/DataSource-라우팅이-안되는-이유-OSIV), (참고 날짜 2024.12.22)
