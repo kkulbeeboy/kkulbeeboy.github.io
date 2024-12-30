@@ -35,6 +35,14 @@ jobs:
           # If using the 'assets' git submodule from Chirpy Starter, uncomment above
           # (See: https://github.com/cotes2020/chirpy-starter/tree/main/assets)
 
+      - name: Setup Config
+        uses: microsoft/variable-substitution@v1
+        with:
+          files: _config.yml
+        env:
+          comments.giscus.repo_id: ${{ secrets.REPO_ID }} 
+          comments.giscus.category_id: ${{ secrets.CATEGORY_ID }}
+
       - name: Setup Pages
         id: pages
         uses: actions/configure-pages@v4
