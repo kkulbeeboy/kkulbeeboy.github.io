@@ -43,6 +43,7 @@ jobs:
           comments.giscus.repo_id: ${{ secrets.REPO_ID }} 
           comments.giscus.category_id: ${{ secrets.CATEGORY_ID }}
           analytics.google.id: ${{ secrets.ANALYTICS_GOOGLE_ID }}
+          webmaster_verifications.google: ${{ secrets.GOOGLE_SITE_VERIFICATION }}
 
       - name: Setup Pages
         id: pages
