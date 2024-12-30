@@ -42,6 +42,7 @@ jobs:
         env:
           comments.giscus.repo_id: ${{ secrets.REPO_ID }} 
           comments.giscus.category_id: ${{ secrets.CATEGORY_ID }}
+          analytics.google.id: ${{ secrets.ANALYTICS_GOOGLE_ID }}
 
       - name: Setup Pages
         id: pages
