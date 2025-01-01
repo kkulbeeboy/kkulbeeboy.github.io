@@ -43,6 +43,7 @@ suspend fun main() {
     After
     ```
     
+<br>
 
 이때, 함수 내부에서 `suspendCoroutine` 함수를 이용하여, "Before"와 "After"를 출력하는 출력문 사이를 중단 지점으로 하여, 중단해 보겠습니다.
 
@@ -106,8 +107,8 @@ suspend fun main() {
     After
     ```
     
-- suspendCoroutine가 호출된 뒤에는 이미 중단되어 Continuation 객체를 사용할 수 없기 때문에, Continuation 객체를 사용하기 위해서는 suspendCoroutine 함수의 인자로 들어가 람다 함수에서 중단되기 전에 사용할 수 있습니다.
-- suspendCoroutine의 코루틴이 중단되기 전에 Continuation 객체의 resume을 호출하여, 중단된 코루틴이 재개되어 After가 출력되고 프로그램 실행이 종료될 수 있었습니다.
+- `suspendCoroutine`가 호출된 뒤에는 이미 중단되어 Continuation 객체를 사용할 수 없기 때문에, **Continuation 객체를 사용하기 위해서는 suspendCoroutine 함수의 인자로 들어가 람다 함수에서 중단되기 전에 사용할 수 있습니다.**
+- suspendCoroutine의 **코루틴이 중단되기 전에 Continuation 객체의 `resume`을 호출하여, 중단된 코루틴이 재개**되어 "After"가 출력되고 프로그램 실행이 종료될 수 있었습니다.
     - 하지만, 실제로는 중단된 코루틴이 곧바로 재개될 경우 최적화로 인해 아예 중단되지 않습니다.
 
 <br>
@@ -147,7 +148,7 @@ suspend fun main() {
 
 ## 중단된 코루틴을 값으로 재개
 
-위 예시에서 suspendCoroutine 타입의 인자로 Unit을 사용하고, resume 함수에 Unit 인자를 넣은 이유는, Unit이 중단 함수의 리턴 타입이고, Continuation의 제네릭 타입 인자이기 때문입니다.
+위 예시에서 suspendCoroutine 타입의 인자로 `Unit`을 사용하고, resume 함수에 `Unit` 인자를 넣은 이유는, **Unit이 중단 함수의 리턴 타입이고, Continuation의 제네릭 타입 인자**이기 때문입니다.
 
 ```kotlin
 val result: Unit = suspendCoroutine<Unit> { continuation: Continuation<Unit> -> 
@@ -155,11 +156,11 @@ val result: Unit = suspendCoroutine<Unit> { continuation: Continuation<Unit> ->
 }
 ```
 
-suspendCoroutine을 호출할 때 Continuation 객체로 반환될 값의 타입을 지정할 수 있으며, resume을 통해 반환되는 값은 반드시 지정된 타입과 같은 타입이어야 합니다.
+suspendCoroutine을 호출할 때 Continuation 객체로 반환될 값의 타입을 지정할 수 있으며, resume을 통해 반환되는 값은 **반드시 지정된 타입과 같은 타입**이어야 합니다.
 
-코루틴에서 값으로 중단된 코루틴을 재개하는 상황은 외부 API를 호출해 특정 데이터를 기다리려고 중단하는 상황을 예시로 들 수 있습니다.
+코루틴에서 **값으로 중단된 코루틴을 재개하는 상황**은 **외부 API를 호출해 특정 데이터를 기다리려고 중단하는 상황**을 예시로 들 수 있습니다.
 
-코루틴이 없다면 스레드는 응답을 기다리고 있을 수밖에 없지만, 코루틴을 통해 중단함과 동시에 “데이터를 받고 나면, 받은 데이터를 resume 함수를 통해 보내줘”라고 Continuation 객체를 통해 전달하면 스레드는 다른 일을 할 수 있습니다. 그리고 데이터가 도착하면 스레드는 코루틴이 중단된 지점에서 재개하게 됩니다.
+코루틴이 없다면 스레드는 응답을 기다리고 있을 수밖에 없지만, 코루틴을 통해 중단함과 동시에 `“데이터를 받고 나면, 받은 데이터를 resume 함수를 통해 보내줘”`라고 Continuation 객체를 통해 전달하면 **스레드는 다른 일을 할 수 있습니다.** 그리고 **데이터가 도착하면 스레드는 코루틴이 중단된 지점에서 재개**하게 됩니다.
 
 ```kotlin
 suspend fun requestUser(name: String): User {
@@ -191,7 +192,7 @@ suspend fun main() {
 
 외부 API를 통해 데이터를 가져오려고 할 때, 예외가 발생하면 데이터를 가져올 수 없으므로, 코루틴이 중단된 곳에서 예외를 발생시켜야 합니다.
 
-이때, resumeWithException이 호출되면 중단된 지점에서 인자로 넣어준 예외를 던집니다.
+이때, `resumeWithException`이 호출되면 중단된 지점에서 인자로 넣어준 예외를 던집니다.
 
 <br>
 
@@ -251,6 +252,9 @@ suspend fun main() {
     - 실행이 끝나지 않고, 실행된 상태로 유지됩니다.
 - 위 코드의 실행은, 다른 스레드나 다른 코루틴을 재개하지 않으면 계속 실행된 상태로 유지하게 됩니다.
 - 즉, `continuation?.resume(Unit)`가 호출되는 시점에서 코루틴이 이미 종료 상태이므로, 프로그램이 정지 상태에 빠지게 됩니다.
+
+## 정리
+효과적인 동작을 위해 코틀린 중단(suspend)을 사용하는데, 이러한 코틀린 중단이 어떻게 중단되고 재개될 수 있는지에 대해 알아보며, Continuation 객체와 밀접한 관계가 있다는 것을 알 수 있었습니다.
 
 <br>
 
