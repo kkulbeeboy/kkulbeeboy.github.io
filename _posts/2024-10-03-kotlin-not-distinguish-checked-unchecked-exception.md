@@ -193,6 +193,11 @@ fun nonRuntimeExceptionRollbackTest() {
     ![image.png](/assets/img/posts/kotlin-non-runtime-exception-rollback-test-result.png)
     
 
+## 정리
+- 코틀린에서는 Checked Exception과 Unchecked Exception을 구분하지 않고, 기본적으로 모든 예외를 Unchecked Exception으로 간주하여 처리합니다.
+- 하지만 스프링 트랜잭션 롤백과 같은 경우에는 자바와 마찬가지로 자바에서 Unchecked Exception으로 구분하는 예외 발생 시에만 자동으로 롤백 처리가 되고, 그 외 자바에서 CheckedException으로 구분하는 예외는 자동으로 롤백 처리가 되지 않기 때문에 주의가 필요합니다.
+
+
 <br>
 
 ---
