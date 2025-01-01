@@ -54,7 +54,7 @@ class UserService(
 ```
 
 - 회원 관련 로직을 담당하는 서비스 계층입니다.
-- `getUserById`는 회원 번호로, 회원 정보를 조회하며, readOnly 설정이 되어 있으므로, **읽기 전용 DB로 라우팅이 됩니다.**
+- `getUserById`는 회원 번호로 회원 정보를 조회하며, readOnly 설정이 되어 있으므로, **읽기 전용 DB로 라우팅이 됩니다.**
 
 <br>
 
@@ -74,7 +74,7 @@ class PointService(
 ```
 
 - 포인트 관련 로직을 담당하는 서비스 계층입니다.
-- `savePoint`는 회원에게 포인트를 지급하며, readOnly = true 설정이 없으므로, **쓰기 전용 DB로 라우팅이 됩니다.**
+- `savePoint`는 회원에게 포인트를 지급하며, readOnly 설정이 없으므로, **쓰기 전용 DB로 라우팅이 됩니다.**
 
 <br>
 
@@ -135,7 +135,13 @@ class EventController(
 
 - 이벤트를 담당하는 컨트롤러 계층입니다.
 
-그렇다면, 위 API를 호출하여 회원에게 포인트 지급이 잘 되는지 확인해 보겠습니다.
+현재 회원 테이블에는 다음과 같이 저장되어 있습니다.
+
+| **id** | **name** | **age** |
+| ------ | -------- | ------- |
+| 1      | jude     | 25      |
+
+회원번호 1번인 jude 회원은 나이가 25세라서 이벤트를 진행한다면, 나이 제한에 걸리지 않고 의도한 대로 포인트가 지급이 되어야 합니다. 그렇다면, 위 API를 호출하여 회원에게 포인트 지급이 잘 되는지 확인해 보겠습니다.
 
 - **URI**: `api/v1/events/users/1`
 - **HTTP method**: `POST`
@@ -146,13 +152,6 @@ class EventController(
         "amount": 100
     }
     ```
-    
-
-회원 테이블에는 다음과 같이 저장되어 있어, 회원번호 1번인 jude 회원은 나이가 25세라서 의도한 대로 포인트가 지급이 되어야 합니다.
-
-| **id** | **name** | **age** |
-| ------ | -------- | ------- |
-| 1      | jude     | 25      |
 
 <br>
 
@@ -174,13 +173,12 @@ java.sql.SQLException: INSERT operations are not allowed on this database
 
 OSIV는 **영속성 컨텍스트를 뷰까지 열어둔다는 의미**입니다. 즉, 뷰까지 엔티티를 영속 상태로 유지하여 뷰에서도 지연 로딩이 가능하게 할 수 있습니다. 그렇다면 스프링은 OSIV를 어떠한 방식으로 사용하고 있을까요?
 
-### 스프링의 OSIV → 비즈니스 계층에서 트랜잭션을 사용하는 OSIV
+### 스프링의 OSIV: 비즈니스 계층에서 트랜잭션을 사용하는 OSIV
 
 스프링 프레임워크에서 제공하는 OSIV는 **비즈니스 계층에서 트랜잭션을 사용하는 OSIV** 입니다. 즉, OSIV를 사용하지만 트랜잭션은 비즈니스 계층에서만 사용한다는 뜻입니다.
 
-![스프링 OSIV - 비즈니스 계층 트랜잭션](/assets/img/posts/spring-osiv-business-layer-transaction.png)
-
-스프링 OSIV - 비즈니스 계층 트랜잭션
+**스프링 OSIV: 비즈니스 계층 트랜잭션**
+![스프링 OSIV: 비즈니스 계층 트랜잭션](/assets/img/posts/spring-osiv-business-layer-transaction.png)
 
 1. 클라이언트의 요청이 들어오면 서블릿 필터나, 스프링 인터셉터에서 영속성 컨텍스트를 생성하지만, **이때 트랜잭션은 시작하지 않는다.**
 2. 서비스 계층에서 `@Transactional` 로 트랜잭션을 시작할 때 1번에서 미리 생성해둔 영속성 컨텍스트를 찾아와서 트랜잭션을 시작한다.
@@ -201,9 +199,8 @@ OSIV는 **영속성 컨텍스트를 뷰까지 열어둔다는 의미**입니다.
 
 즉, 위 문제 상황에서 **회원 정보를 조회하기 위해 사용했던 읽기 전용 DB의 커넥션을 회원의 포인트를 적재하는 로직에서도 사용하여 문제가 된것**이었습니다.
 
+**스프링 OSIV에서 같은 DB 커넥션을 사용하게 되는 상황**
 ![스프링 OSIV에서 같은 DB 커넥션을 사용하게 되는 상황](/assets/img/posts/spring-osiv-same-db-connection.png)
-
-스프링 OSIV에서 같은 DB 커넥션을 사용하게 되는 상황
 
 - 회원 정보를 조회하는 `UserService`의 `getUserById`를 사용할 때와, 회원의 포인트를 적재하는 `PointService`의 `savePoint`를 사용할 때 **모두 같은 영속성 컨텍스트를 공유하게 되므로, DB 커넥션도 공유하게 됩니다.**
 - 즉, `UserService`의 `getUserById`를 사용할 때 획득한 읽기 전용 DB 커넥션을 `PointService`의 `savePoint`를 수행할 때도 사용하게 되어, **읽기 전용 DB에 쓰기 작업이 수행되어 문제가 발생했던것 입니다.**
@@ -222,9 +219,15 @@ spring:
     open-in-view: false
 ```
 
-![서비스 로직 별로 다른 DB 커넥션을 사용하게 되는 상황](/assets/img/posts/spring-osiv-different-db-connection.png)
+<br>
 
-서비스 로직 별로 다른 DB 커넥션을 사용하게 되는 상황
+**OSIV를 비활성화했을 때 영속성 컨텍스트 생존 범위**
+![OSIV를 비활성화했을 때 영속성 컨텍스트 생존 범위](/assets/img/posts/spring-osiv-false-persistence-context-scope.png)
+
+<br>
+
+**서비스 로직 별로 다른 DB 커넥션을 사용하게 되는 상황**
+![서비스 로직 별로 다른 DB 커넥션을 사용하게 되는 상황](/assets/img/posts/spring-osiv-different-db-connection.png)
 
 - 회원 정보를 조회하는 `UserService`의 `getUserById`를 사용할 때와, 회원의 포인트를 적재하는 `PointService`의 `savePoint`를 사용할 때 **모두 각각 다른 영속성 컨텍스트를 생성하여 사용하므로, DB 커넥션 또한 각각 획득하여 사용합니다.**
 - 즉, `UserService`의 `getUserById`를 수행할 때는 읽기 전용 DB 커넥션,  `PointService`의 `savePoint`를 수행할 때는 쓰기 전용 DB 커넥션을 사용하여, 문제없이 로직이 수행될 수 있습니다.
@@ -234,6 +237,11 @@ spring:
 ### 어? 나는 OSIV를 설정하지 않았는데?
 
 **OSIV의 기본 설정은 true**로, OSIV를 따로 설정하지 않았더라도, OSIV가 동작하여 위와 같은 문제가 발생할 수 있습니다.
+
+## 정리
+- DB 라우팅이 잘되지 않는 문제 상황을 확인하며 OSIV 동작 방식을 배울 수 있는 계기가 되었습니다.
+- OSIV가 활성화된 상태라면, 의도한 대로 동작하고 있는지 확인해 볼 필요가 있습니다.
+  - OSIV 기본 설정은 활성 상태이므로 OSIV가 필요하지 않은 상황이라면, 의도치 않은 동작을 제어하기 위해 비활성화하는 게 좋다고 생각합니다.
 
 <br>
 
