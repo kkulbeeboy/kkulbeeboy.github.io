@@ -117,9 +117,19 @@ public interface Job : CoroutineContext.Element
 
 ## 코루틴에서 스레드 로컬을 사용하는 방법: asContextElement
 
-코루틴에서는 스레드 로컬을 직접 사용하는 대신, `asContextElement()` 확장 함수를 이용해 **ThreadLocal을 CoroutineContext에 통합할 수 있습니다.**
+코루틴에서는 스레드 로컬을 직접 사용하는 대신, `asContextElement()` 확장 함수를 이용해 **ThreadLocal을 CoroutineContext에 통합할 수 있습니다.** 
+
+<br>
+
+**코루틴에서 정의한 ThreadLocal의 확장함수 asContextElement()**
+
+```kotlin
+public fun <T> ThreadLocal<T>.asContextElement(value: T = get()): ThreadContextElement<T> = ThreadLocalElement(value, this)
+```
 
 `ThreadLocal.asContextElement()`은 내부적으로 `ThreadContextElement` 인터페이스를 구현한 하나의 `CoroutineContext.Element`이므로 CoroutineContext에 통합하여 관리할 수 있게되는것 입니다.
+
+→ **ThreadContextElement**에 대해서는 아래에서 더 자세히 확인해 보겠습니다.
 
 즉, **asContextElement는 이 ThreadLocal을 CoroutineContext의 일부로 등록하여, 코루틴이 재개될 때마다 해당 값이 자동으로 복원되도록 하는 역할을 합니다.**
 
@@ -155,6 +165,160 @@ public interface Job : CoroutineContext.Element
     
 - 이처럼 코루틴이 중단되었다가 다른 스레드에서 재개되어도 스레드 로컬 값이 코루틴 컨텍스트를 통해 함께 전달됩니다.
 
+<br>
+
+### 코루틴이 재개될 때와 중단될 때 ThreadLocal 상황
+
+정리하면, 코루틴을 생성할 때 `threadLocal.asContextElement()` 를 사용해 `ThreadLocal` 값을 `CoroutineContext`의 요소로 등록하면, 코루틴의 **재개** 시점에는 `ThreadLocal`에 해당 컨텍스트 값이 설정되고, **중단** 시점에는 기존 `ThreadLocal` 값으로 다시 복원됩니다.
+
+즉, 코루틴의 실행 흐름에 따라 `ThreadLocal` 값이 안전하게 교체/복구되도록 관리되는 것입니다.
+
+**코루틴이 재개될 때 (resume)**
+
+- 코루틴이 어떤 스레드에서 실행될지 모르는 상황
+- 실행 직전에 `updateThreadContext()` 호출
+- 해당 코루틴 컨텍스트에 보관된 값이 **ThreadLocal.set(value)** 로 설정
+    - 즉, 그 스레드는 이제 그 코루틴의 ThreadLocal 값을 사용
+    
+
+**코루틴이 중단될 때 (suspend)**
+
+- 코루틴이 실행되던 스레드에서 빠져나갈 수도 있음
+- suspend 직전에 `restoreThreadContext()` 호출
+- 원래 그 스레드가 가지고 있던 ThreadLocal 값으로 복원
+
+이를 통해 스레드가 바뀌는 환경의 코루틴에서, **어떤 시점에 특정 ThreadLocal 값이 보장되어 있어야 하는 상황에 대응**할 수 있게 됩니다.
+
+즉, **재개 시점에 그 코루틴이 가져야 할 ThreadLocal 값을 덮어쓰고**, **중단 시점에 이전 스레드의 상태를 돌려주는 방식의** 구조를 가지게 되었습니다.
+
+<br>
+
+## ThreadContextElement 인터페이스
+
+`ThreadContextElement` 인터페이스는 ThreadLocal과 CoroutineContext 간의 연동을 위한 핵심 인터페이스 입니다.
+
+더 나아가 `ThreadContextElement` 인터페이스 코드를 파악해 보겠습니다.
+
+<br>
+
+**ThreadContextElement 인터페이스**
+
+```kotlin
+public interface ThreadContextElement<S> : kotlin.coroutines.CoroutineContext.Element {
+    public abstract fun restoreThreadContext(context: kotlin.coroutines.CoroutineContext, oldState: S): kotlin.Unit
+
+    public abstract fun updateThreadContext(context: kotlin.coroutines.CoroutineContext): S
+}
+```
+
+`ThreadContextElement`는 `CoroutineContext.Element`를 구현(extend)한 인터페이스 입니다.
+
+이 인터페이스는 두 가지 메서드(updateThreadContext(), restoreThreadContext()) 를 구현해야 된다는것을 알 수 있습니다.
+
+- `updateThreadContext()`
+    - 호출되는 시점
+        - 코루틴이 **다시 실행될 때(resume)**
+        - 즉, 코루틴이 어떤 스레드에서 실행될지 확정되는 순간
+    - 역할
+        - 코루틴 컨텍스트의 값을 ThreadLocal에 실제로 세팅하는 작업
+        - 스레드 실행 전에 ThreadLocal 값을 코루틴이 갖고 있어야 하는 값으로 설정
+    - 반환값 `S`
+        - ThreadLocal에 원래 들어 있던 값이며, 중단(suspend) 시점에 복원하기 위해 저장되는 값(oldState)
+- `restoreThreadContext()`
+    - 호출되는 시점
+        - 코루틴이 **중단(suspend)** 되기 직전
+    - 역할
+        - 재개(resume) 전에 ThreadLocal을 수정했으므로 suspend 시에는 **원래 ThreadLocal에 존재하던 값(oldState)을 돌려놓는 역할**
+
+즉, 재개(resume) 시점에는 ThreadLocal의 값을 코루틴의 값으로 설정한다는것을 알 수 있고, 중단(suspend) 시점에는 ThreadLocal의 값을 스레드 원래의 값(oldState)로 설정한다는것을 알 수 있습니다.
+
+<br>
+
+### ThreadContextElement 커스텀 예시
+
+`ThreadContextElement`는 코루틴이 스레드를 바꿀 때 어떤 Thread 상태를 가져오고 복원할지를 정의하는 인터페이스이므로, 이를 직접 구현하면 커스텀하게 ThreadLocal 동작을 만들 수 있습니다.
+
+예를 들어 아래와 같은 상황을 가정해 보겠습니다.
+
+> 분산 시스템에서 전체 트랜잭션을 추적하기 위해 각각의 요청마다 고유 식별자인 traceId를 전달하는데, 이를 코루틴에서도 전달하고 싶은 상황
+> 
+
+<br>
+
+**직접 ThreadContextElement를 구현한 커스텀 CoroutineContext.Element → TraceIdContext**
+
+```kotlin
+class TraceIdContext (
+    private val threadLocal: ThreadLocal<String>,
+    private val traceId: String
+) : ThreadContextElement<String> {
+
+    companion object Key : CoroutineContext.Key<TraceIdContext>
+
+    override val key: CoroutineContext.Key<TraceIdContext> get() = Key
+
+    override fun updateThreadContext(context: CoroutineContext): String {
+        val oldValue = threadLocal.get()
+        threadLocal.set(traceId)
+        return oldValue
+    }
+
+    override fun restoreThreadContext(context: CoroutineContext, oldState: String) {
+        threadLocal.set(oldState)
+    }
+}
+```
+
+- `ThreadContextElement`를 구현한 커스텀 `CoroutineContext.Element`입니다.
+- 코루틴이 실행(또는 재개)될 때 특정 `ThreadLocal`에 traceId를 넣고, 중단되면 원래 값으로 복원합니다.
+- **생성자**
+    - `private val threadLocal: ThreadLocal<String>`
+        - 변경/복원 대상이 되는 `ThreadLocal` 객체
+    - `private val requestId: String`
+        - 코루틴이 실행 중에 추적할 trace ID
+    - 예시에서는 생성자 파라미터 모두 non-null로 가정했습니다.
+- **companion object Key 와 key 속성값**
+    - `CoroutineContext`에서 요소(Element)는 고유 키로 식별됩니다.
+    - 여기서 `companion object` 자체를 `Key`로 사용하여 `context[RequestIdContext.Key]`로 요소를 조회할 수 있습니다.
+    - `override val key`는 **`CoroutineContext.Element` 인터페이스 요구사항**으로, 이 요소의 키를 반환합니다.
+
+<br>
+
+**TraceIdContext를 사용하는 테스트 코드**
+
+```kotlin
+    @Test
+    fun `TraceIdContext를 사용하여 코루틴내에서 traceId 추적`() = runBlocking {
+        val traceIdThreadLocal = object : ThreadLocal<String>() {
+            override fun initialValue(): String = "main" // ThreadLocal 초기값을 "main"으로 설정
+        }
+
+        launch(Dispatchers.Default + TraceIdContext(traceIdThreadLocal, "trace-1234")) {
+            logger.info("Start: ${Thread.currentThread().name}, id=${traceIdThreadLocal.get()}")
+            delay(100)
+            logger.info("Resume: ${Thread.currentThread().name}, id=${traceIdThreadLocal.get()}")
+        }
+
+        logger.info("After: ${Thread.currentThread().name}, id=${traceIdThreadLocal.get()}")
+    }
+```
+
+- 실행 결과
+    
+    ```bash
+    22:43:14.853 Start: DefaultDispatcher-worker-1 @coroutine#2, id=trace-1234
+    22:43:14.853 After: Test worker @coroutine#1, id=main
+    22:43:14.962 Resume: DefaultDispatcher-worker-1 @coroutine#2, id=trace-1234
+    ```
+    
+- 코루틴이 실행되는 스레드(Dispatchers.Default)에서 ThreadLocal 값이 trace-1234로 설정
+    - 코루틴 실행 직전에 `updateThreadContext()`가 호출되어 기존 ThreadLocal 값(main)을 저장하고 새 값(trace-1234) 설정
+- 코루틴 실행 후, main 스레드의 ThreadLocal 값은 원래 값(main)으로 복원
+    - suspend 시점에서 `restoreThreadContext()`가 호출되어 main 스레드의 ThreadLocal 값이 원래 상태로 복원
+- delay 이후 코루틴이 재개될 때, 다시 `updateThreadContext()`가 호출되고, ThreadLocal에 trace-1234가 다시 설정
+
+<br>
+
 ## 정리
 
 - 코루틴은 스레드를 자유롭게 전환하므로 단순히 스레드 로컬(ThreadLocal)을 그대로 사용하면 데이터가 사라지거나 잘못된 값이 참조될 수 있습니다.
@@ -173,3 +337,7 @@ public interface Job : CoroutineContext.Element
 Kotlin, “Coroutine context and dispatchers﻿”, [https://kotlinlang.org/docs/coroutine-context-and-dispatchers.htm](https://kotlinlang.org/docs/coroutine-context-and-dispatchers.html), (참고 날짜 2025.11.09)
 
 Kotlin, “asContextElement”, [https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/as-context-element.html](https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/as-context-element.html), (참고 날짜 2025.11.09) 
+
+medium, “코루틴 공식 가이드 자세히 읽기 — Part 5 — Dive 3”, [https://myungpyo.medium.com/코루틴-공식-가이드-자세히-읽기-part-5-dive-3-3c82eb80245c](https://myungpyo.medium.com/%EC%BD%94%EB%A3%A8%ED%8B%B4-%EA%B3%B5%EC%8B%9D-%EA%B0%80%EC%9D%B4%EB%93%9C-%EC%9E%90%EC%84%B8%ED%9E%88-%EC%9D%BD%EA%B8%B0-part-5-dive-3-3c82eb80245c), (참고 날짜 2025.11.26)
+
+Kotlin, “Element”, [https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.coroutines/-coroutine-context/-element/](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.coroutines/-coroutine-context/-element/), (참고 날짜 2025.11.26)
